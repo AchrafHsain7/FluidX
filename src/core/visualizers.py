@@ -21,18 +21,20 @@ def visualize(f, X, Y, Ci):
     dv_dx, dv_dy = torch.gradient(macro_velocities[..., 1])
     curl = du_dy - dv_dx
 
-    velocity_magnitude = velocity_magnitude.cpu()
-    curl = curl.cpu()
+    velocity_magnitude = np.flip(velocity_magnitude.cpu().numpy().T, axis=0)
+    curl = np.flip(curl.cpu().numpy().T, axis=0)
 
     #Plots
     plt.subplot(211)
-    plt.contourf(X, Y, velocity_magnitude, levels=50, cmap="jet")
+    # plt.contourf(X, Y, velocity_magnitude, levels=20, cmap="jet")
+    plt.imshow(velocity_magnitude, cmap="jet", aspect="equal")
     plt.colorbar().set_label("Velocity Magnitude")
+
     plt.subplot(212)
-    plt.contourf(X, Y, curl, levels=50, cmap=cmr.redshift, vmin=-0.02, vmax=0.02)
+    plt.imshow(curl, cmap=cmr.redshift, vmin=-0.02, vmax=0.02, aspect="equal")
     plt.colorbar().set_label("Vorticity Magnitude")
     
-    # plt.tight_layout()
+    plt.tight_layout()
     plt.draw()
     plt.pause(0.0001)
     plt.clf()
@@ -48,11 +50,13 @@ def readmask(file,Nx, Ny, device="cuda", ratio_Y=0.5, leftoffset=0):
     new_x = int(new_y / img_ratio)
     img = np.array(Image.fromarray(img).resize((new_x, new_y)))
 
+    lateral = np.sqrt(new_y**2 + new_x**2)
+    lenghtCharacteristic = max(new_x, new_y, lateral)
+
     target_height = Ny
     target_width = Nx
     # Get the current dimensions of the image
     current_height, current_width = img.shape[:2]
-
 
     # Calculate padding for each side
     pad_top = (target_height - current_height) // 2
@@ -67,4 +71,4 @@ def readmask(file,Nx, Ny, device="cuda", ratio_Y=0.5, leftoffset=0):
     )
     img = padded_img < np.mean(img)
     img = img[::-1, :].T
-    return torch.tensor(img.copy()).to(device)
+    return torch.tensor(img.copy()).to(device), lenghtCharacteristic

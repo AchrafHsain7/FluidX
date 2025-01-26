@@ -1,19 +1,16 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
-from utils.utils import computeDensity, computeEquilibrium, computeMacroVelocity
+from utils.utils import computeDensity, computeEquilibrium
 
 from abc import ABC, abstractmethod
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 
 
-
-
-
+###################################################################################################################
 class LBMInterface(ABC):
     def __init__(self, latticeCoordinates, weights, device="cuda") ->None:
         self.latticeCoordinates = latticeCoordinates
@@ -51,6 +48,10 @@ class LBMInterface(ABC):
         ...
 
 
+
+
+
+#####################################################################################################################
 class LBMSolver2D(LBMInterface):
     def __init__(self, latticeCoordinates, weights, relaxation,
                   numberVelocities, initialDensity, directionalVelocities, profileVelocity,
@@ -105,7 +106,6 @@ class LBMSolver2D(LBMInterface):
         return f_collison
     
 
-
     def update(self, mask):
         #right boundary condition: flow not coming back from right boundary 
         self.discreteFluid[-1, :, self.directionalVelocities[0]] = self.discreteFluid[-2, :, self.directionalVelocities[0]]
@@ -126,10 +126,7 @@ class LBMSolver2D(LBMInterface):
         self.propagate(self.discreteFluid)
         return self.discreteFluid
 
-
-
-
-
+################################################################################################################
 
 
 

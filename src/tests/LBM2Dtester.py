@@ -13,7 +13,7 @@ import cProfile
 
 
 if __name__ == "__main__":
-    N_X, N_Y = 400, 100
+    N_X, N_Y = 500, 200
     DEVICE = "cuda"
     PRECISION = torch.float32
     N_DVELOCITIES = 9 #number of discrete velocities
@@ -33,12 +33,10 @@ if __name__ == "__main__":
 
 
     #SIMULATION PARAMETERS
-    RIGHT_VELOCITY = 0.1 #mach
+    RIGHT_VELOCITY = 0.05 #mach
     CYLINDER_RADIUS = N_Y // 9
-    REYNOLD_NUMBER = 275
-    kinematic_viscosity = (RIGHT_VELOCITY * CYLINDER_RADIUS) / REYNOLD_NUMBER
-    RELAXATION_TIME = 1.0 / (3 * kinematic_viscosity + 0.5)  # TODO: Check how it is actuallu computed
-    MASK = "../../data/models/airfoil.jpg"
+    REYNOLD_NUMBER = 1200
+    MASK = "../../data/models/airplane.jpg"
     
     Ci = torch.tensor([
         [0, 1, 0, -1, 0, 1, -1, -1, 1],
@@ -50,14 +48,19 @@ if __name__ == "__main__":
     f = torch.ones((N_X, N_Y, 9)).to(DEVICE)
     X, Y = np.meshgrid(np.arange(N_X), np.arange(N_Y), indexing="ij")
     CYLINDER_CENTER = [N_X // 5, N_Y // 2]
-    CYLINDER_RADIUS = N_Y // 9
+    CYLINDER_RADIUS = N_Y // 7
     N_PLOT = 150
     mask = np.sqrt(
         (X - CYLINDER_CENTER[0])**2 + (Y - CYLINDER_CENTER[1])**2
         ) < CYLINDER_RADIUS
+    L = CYLINDER_RADIUS
     mask = torch.tensor(mask).to(DEVICE)
 
-    mask = readmask(MASK, N_X, N_Y, ratio_Y=0.7)
+    mask, L = readmask(MASK, N_X, N_Y, ratio_Y=0.3, leftoffset=50)
+
+    kinematic_viscosity = (RIGHT_VELOCITY * L) / REYNOLD_NUMBER
+    RELAXATION_TIME = max(1.0 / (3 * kinematic_viscosity + 0.5), 0.5)  # TODO: Check how it is actuallu computed
+    print(RELAXATION_TIME)
 
 
 
