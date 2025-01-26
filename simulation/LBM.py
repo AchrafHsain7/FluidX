@@ -5,7 +5,7 @@ from PIL import Image, ImageOps
 import cmasher as cmr
 import sys
 import jax.numpy as jnp
-
+from tqdm import tqdm
 
 
 # DEVICE PARAMETERS
@@ -50,7 +50,7 @@ RIGHT_VELOCITY = 0.05 #mach
 SOUND_SPEED = DELTA_X / (DELTA_T*np.sqrt(3))
 # RELAXATION_TIME = 0.1  # TODO: Check how it is actuallu computed
 CYLINDER_RADIUS = N_Y // 9
-REYNOLD_NUMBER = 80
+REYNOLD_NUMBER = 275
 kinematic_viscosity = (RIGHT_VELOCITY * CYLINDER_RADIUS) / REYNOLD_NUMBER
 RELAXATION_TIME = 1.0 / (3 * kinematic_viscosity + 0.5)  # TODO: Check how it is actuallu computed
 
@@ -107,8 +107,8 @@ def propagate(f_colision):
     f_propagated = torch.tensor(f_colision).to(DEVICE)
     for i in range(N_DVELOCITIES):
         f_propagated[:, :, i] = torch.roll(
-        torch.roll(f_colision[:, :, i], int(Ci[0, i].tolist()), dims=1),
-            int(Ci[1, i].tolist()), dims=0)
+        torch.roll(f_colision[:, :, i], int(Ci[0, i].tolist()), dims=0),
+            int(Ci[1, i].tolist()), dims=1)
         
     return f_propagated
     
@@ -124,11 +124,11 @@ def dirichlet_inflow(macro_vel, profile_velocity, f, density):
     macro_vel[0, 1:-1, :] = profile_velocity[0, 1:-1, :]
     density[0, :] = compute_density(f[0, :, VERTICAL_VELOCITIES]) + 2*compute_density(f[0, :, DIRECTIONAL_VELOCITIES[0]])
     density[0, :] /= (1 - macro_vel[0, :, 0])
-
     return macro_vel, density
 
-def bounce_back(f_collison, f, mask):
 
+
+def bounce_back(f_collison, f, mask):
     for i in range(N_DVELOCITIES):
         f_collison[:, :, LATTICES[i]] = torch.where(mask, f[:, :, OPPOSITE_LATTICES[i]], f_collison[:, :, LATTICES[i]])
 
@@ -138,26 +138,29 @@ def bounce_back(f_collison, f, mask):
 def timstep(f, profile_vel, mask):
      #right boundary condition: flow not coming back from right boundary 
      f[-1, :, DIRECTIONAL_VELOCITIES[0]] = f[-2, :, DIRECTIONAL_VELOCITIES[0]]
-    #  print("Step1: =================================")
-    #  print(f)
 
 
      #compute moments and densities
      density = compute_density(f)
      macro_vel = compute_macro(f, density)
-
-    #  print("Step2: =================================")
-    #  print(density)
-    #  print(macro_vel)
-
      
      #Inflow
      macro_vel, density = dirichlet_inflow(macro_vel, profile_vel, f, density)
+
+    #  u =  macro_vel[:, :, 0].cpu().numpy()
+    #  v = macro_vel[:, :, 1].cpu().numpy()
+    #  print(X.shape, Y.shape, u.shape, v.shape)
+
+
+    #  plt.quiver(X, Y, u,v , color="red",  scale_units="xy")
+    # #  plt.streamplot(Y, X, u, v,color=u**2 + v**2,  cmap="viridis")
+    #  plt.show()
 
     #  print("Step3: =================================")
     #  print(macro_vel)
     #  print(density)
 
+    
 
      #Equilibrium
      feq = compute_equilibrium(macro_vel, density)
@@ -236,13 +239,16 @@ def visualize(f, X, Y, mask):
     velocity_magnitude = velocity_magnitude.cpu()
     curl = curl.cpu()
 
-    # velocity_magnitude[mask] = -1
+    # u =  macro_velocities[:, :, 0].cpu().numpy()
+    # v = macro_velocities[:, :, 1].cpu().numpy()
+    # print(X.shape, Y.shape, u.shape, v.shape)
 
-    # print(density, end="\n====================\n")
-    # print(macro_velocities, end="\n====================\n")
-    # print(velocity_magnitude, end="\n====================\n")
-    # print(curl, end="\n====================\n")
-    # sys.exit()
+
+    # plt.quiver(X, Y, u,v , color="blue",  scale_units="xy")
+    # #  plt.streamplot(Y, X, u, v,color=u**2 + v**2,  cmap="viridis")
+    # plt.show()
+
+    
 
     #Plots
     plt.subplot(211)
@@ -284,12 +290,10 @@ if __name__ == "__main__":
     # mask = readmask(MASK, N_X, N_Y, ratio_Y=0.5)
 
 
-    for i in range(N_ITERATIONS):
+    for i in tqdm(range(N_ITERATIONS)):
         F = timstep(F, velcity_profile, mask)
         if i % N_PLOT == 0:
-            print("Visualizing")
             visualize(F, X, Y, mask)
-            pass
 
 
 
