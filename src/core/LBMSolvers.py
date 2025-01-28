@@ -129,7 +129,28 @@ class LBMSolver2D(LBMInterface):
 ################################################################################################################
 
 
+class LBMSolver3D(LBMSolver2D):
+    def __init__(self, latticeCoordinates, weights, relaxation, numberVelocities,
+                  initialDensity, directionalVelocities, profileVelocity, verticalVelocities, latticeIndexes, oppositeIndexes, device="cuda"):
+        super().__init__(latticeCoordinates, weights, relaxation, numberVelocities, initialDensity, directionalVelocities, profileVelocity,
+                          verticalVelocities, latticeIndexes, oppositeIndexes, device)
+        
+    def propagate(self, f_colision):
+        f_propagated = f_colision.clone().detach().to(self.device)
+        for i in range(self.numberVelocities):
+            f_propagated[:, :, :, i] = torch.roll(
+                                        torch.roll(
+                                            torch.roll(f_colision[:, :, :,  i], int(self.latticeCoordinates[0, i].tolist()), dims=0),
+                                            int(self.latticeCoordinates[1, i].tolist()), dims=1),
+                                        int(self.latticeCoordinates[2, i].tolist()), dims=2) 
+            
+        self.discreteFluid = f_propagated
 
+    def boundaryConditions(self):
+        #make the gradient 0 for the specific boundaries, default boundary condition at Right
+        # Boundaries: 0:Left, 1: Top, 2: Right, 3:Bottom
+        self.discreteFluid[0:, :, :, self.directionalVelocities[0]] =  self.equilibriumFluid[0, :, self.directionalVelocities[0]]
+        return self.discreteFluid
 
 
 
