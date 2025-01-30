@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
-from utils.utils import computeDensity, computeEquilibrium
+from utils.utils import computeDensity, computeEquilibrium, computeMacroVelocity
 
 from abc import ABC, abstractmethod
 import torch
@@ -12,33 +12,36 @@ import numpy as np
 
 ###################################################################################################################
 class LBMInterface(ABC):
-    def __init__(self, latticeCoordinates, weights, device="cuda") ->None:
+    def __init__(self, latticeCoordinates, weights, relaxation,
+                  numberVelocities, initialDensity, directionalVelocities, profileVelocity,
+                  verticalVelocities, latticeIndexes, oppositeIndexes, device="cuda", confined=False) ->None:
+        
         self.latticeCoordinates = latticeCoordinates
         self.weights = weights
         self.speedSound = 1 / np.sqrt(3.0)
         self.device = device
+        self.confined = confined
         self.equilibriumFluid = None
         self.macroVelocity = None
-        self.density = None
-        self.discreteFluid = None
+        self.relaxation = relaxation
+        self.density = initialDensity
+        self.numberVelocities = numberVelocities
+        self.directionalVelocities = directionalVelocities
+        self.profileVelocity = profileVelocity
+        self.verticalVelocities = verticalVelocities
+        self.latticeIndexes = latticeIndexes
+        self.oppositeIndexes = oppositeIndexes
+        self.discreteFluid = computeEquilibrium(self.profileVelocity, self.density, self.weights, self.latticeCoordinates)
 
     def computeDensity(self):
         self.density = torch.sum(self.discreteFluid, dim=-1)
     
     def computeMacroVelocity(self):
-        macroVelocity = torch.einsum("XYD,dD->XYd", self.discreteFluid, self.latticeCoordinates)
-        macroVelocity = torch.div(macroVelocity, self.density[..., torch.newaxis])
+        macroVelocity = computeMacroVelocity(self.discreteFluid, self.density, self.latticeCoordinates)
         self.macroVelocity = macroVelocity
     
     def computeEquilibrium(self):
-        macroL2 = torch.norm(self.macroVelocity, p=2, dim=-1)
-        macroCoordinates = torch.einsum("NXq,qd->NXd", self.macroVelocity, self.latticeCoordinates)
-        fluidEquilibrium = (
-            self.density[..., torch.newaxis]* self.weights[torch.newaxis, torch.newaxis, :] 
-        * (   1 + macroCoordinates/(self.speedSound**2) 
-            + (macroCoordinates**2)/(2*(self.speedSound**4)) 
-            - macroL2[..., torch.newaxis]**2/(2* (self.speedSound**2))   ))
-        
+        fluidEquilibrium = computeEquilibrium(self.macroVelocity, self.density, self.weights, self.latticeCoordinates, self.speedSound)
         self.equilibriumFluid = fluidEquilibrium
 
     
@@ -56,18 +59,11 @@ class LBMSolver2D(LBMInterface):
     def __init__(self, latticeCoordinates, weights, relaxation,
                   numberVelocities, initialDensity, directionalVelocities, profileVelocity,
                   verticalVelocities, latticeIndexes, oppositeIndexes, 
-                    device="cuda"):
-        
-        super().__init__(latticeCoordinates, weights, device)
-        self.relaxation = relaxation
-        self.density = initialDensity
-        self.numberVelocities = numberVelocities
-        self.directionalVelocities = directionalVelocities
-        self.profileVelocity = profileVelocity
-        self.verticalVelocities = verticalVelocities
-        self.latticeIndexes = latticeIndexes
-        self.oppositeIndexes = oppositeIndexes
-        self.discreteFluid = computeEquilibrium(self.profileVelocity, self.density, self.weights, self.latticeCoordinates)
+                    device="cuda", confined=False):
+        super().__init__(latticeCoordinates, weights, relaxation,
+                  numberVelocities, initialDensity, directionalVelocities, profileVelocity,
+                  verticalVelocities, latticeIndexes, oppositeIndexes, 
+                    device, confined)
 
     
     def collide(self):
@@ -87,13 +83,13 @@ class LBMSolver2D(LBMInterface):
     def boundaryConditions(self):
         #make the gradient 0 for the specific boundaries, default boundary condition at Right
         # Boundaries: 0:Left, 1: Top, 2: Right, 3:Bottom
-        self.discreteFluid[0:, :, self.directionalVelocities[0]] =  self.equilibriumFluid[0, :, self.directionalVelocities[0]]
+        self.discreteFluid[0:, :, self.directionalVelocities["left"]] =  self.equilibriumFluid[0, :, self.directionalVelocities["left"]]
         return self.discreteFluid
     
     def inflow(self):
         #inflow
         self.macroVelocity[0, 1:-1, :] = self.profileVelocity[0, 1:-1, :]
-        self.density[0, :] = computeDensity(self.discreteFluid[0, :, self.verticalVelocities]) + 2*computeDensity(self.discreteFluid[0, :, self.directionalVelocities[0]])
+        self.density[0, :] = computeDensity(self.discreteFluid[0, :, self.verticalVelocities]) + 2*computeDensity(self.discreteFluid[0, :, self.directionalVelocities["left"]])
         self.density[0, :] /= (1 - self.macroVelocity[0, :, 0])
         
 
@@ -108,7 +104,10 @@ class LBMSolver2D(LBMInterface):
 
     def update(self, mask):
         #right boundary condition: flow not coming back from right boundary 
-        self.discreteFluid[-1, :, self.directionalVelocities[0]] = self.discreteFluid[-2, :, self.directionalVelocities[0]]
+        self.discreteFluid[-1, :, self.directionalVelocities["left"]] = self.discreteFluid[-2, :, self.directionalVelocities["left"]]
+        if self.confined:
+            self.discreteFluid[:, -1, self.directionalVelocities["bottom"]] = self.discreteFluid[:, -2, self.directionalVelocities["bottom"]]
+            self.discreteFluid[: , 0, self.directionalVelocities["top"]] = self.discreteFluid[:, 1, self.directionalVelocities["top"]]
         #compute moments and densities
         self.computeDensity()
         self.computeMacroVelocity()
@@ -117,7 +116,7 @@ class LBMSolver2D(LBMInterface):
         #Equilibrium
         self.computeEquilibrium()
         #BC right
-        self.discreteFluid[0, :, self.directionalVelocities[2]] = self.equilibriumFluid[0, :, self.directionalVelocities[2]]
+        self.discreteFluid[0, :, self.directionalVelocities["right"]] = self.equilibriumFluid[0, :, self.directionalVelocities["right"]]
         #BGK collision
         collisionFluid = self.collide()
         #Bounce back: no slip condition
@@ -135,6 +134,7 @@ class LBMSolver3D(LBMSolver2D):
         super().__init__(latticeCoordinates, weights, relaxation, numberVelocities, initialDensity, directionalVelocities, profileVelocity,
                           verticalVelocities, latticeIndexes, oppositeIndexes, device)
         
+        
     def propagate(self, f_colision):
         f_propagated = f_colision.clone().detach().to(self.device)
         for i in range(self.numberVelocities):
@@ -149,7 +149,47 @@ class LBMSolver3D(LBMSolver2D):
     def boundaryConditions(self):
         #make the gradient 0 for the specific boundaries, default boundary condition at Right
         # Boundaries: 0:Left, 1: Top, 2: Right, 3:Bottom
-        self.discreteFluid[0:, :, :, self.directionalVelocities[0]] =  self.equilibriumFluid[0, :, self.directionalVelocities[0]]
+        self.discreteFluid[0:, :, :, self.directionalVelocities["front"]] =  self.equilibriumFluid[0, :, :, self.directionalVelocities["front"]]
+        return self.discreteFluid
+    
+    def inflow(self):
+        self.macroVelocity[0, 1:-1, 1:-1, :] = self.profileVelocity[0, 1:-1, 1:-1, :]
+        self.density[0, :, :] = (
+            # Base density from non-inlet velocities
+            computeDensity(self.discreteFluid[0, :, :, self.directionalVelocities["noninlet"]]) +
+            # Double contribution from inlet velocities 
+            2*computeDensity(self.discreteFluid[0, :, :, self.directionalVelocities["inlet"]])
+        )
+
+                            
+        self.density[0, :, :] /= (1 - self.macroVelocity[0, :, :, 0])
+    
+    def bounce(self, f_collison, mask):
+        for i in range(self.numberVelocities):
+            f_collison[:, :, :, self.latticeIndexes[i]] = (
+            torch.where(mask, self.discreteFluid[:, :, :, self.oppositeIndexes[i]], f_collison[:, :, :, self.latticeIndexes[i]])
+            )
+
+        return f_collison
+    
+    def update(self, mask):
+        #right boundary condition: flow not coming back from front boundary 
+        self.discreteFluid[-1, :, :, self.directionalVelocities["back"]] = self.discreteFluid[-2, :, :, self.directionalVelocities["back"]]
+        #compute moments and densities
+        self.computeDensity()
+        self.computeMacroVelocity()
+        #Inflow
+        self.inflow()
+        #Equilibrium
+        self.computeEquilibrium()
+        #BC right
+        self.discreteFluid[0, :, :, self.directionalVelocities["front"]] = self.equilibriumFluid[0, :, :, self.directionalVelocities["front"]]
+        #BGK collision
+        collisionFluid = self.collide()
+        #Bounce back: no slip condition
+        self.discreteFluid = self.bounce(collisionFluid, mask)
+        #propagate
+        self.propagate(self.discreteFluid)
         return self.discreteFluid
 
 

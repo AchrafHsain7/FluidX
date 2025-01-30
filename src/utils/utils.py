@@ -10,9 +10,12 @@ def computeDensity(discreteFluid) -> torch.Tensor:
     return torch.sum(discreteFluid, dim=-1)
     
 def computeMacroVelocity(discreteFluid, density, latticeCoordinates) -> torch.Tensor:
-    macroVelocity = torch.einsum("XYD,dD->XYd", discreteFluid, latticeCoordinates)
-    macroVelocity = torch.div(macroVelocity, density[..., torch.newaxis])
-    return macroVelocity
+     if len(discreteFluid.shape) == 3:
+        macroVelocity = torch.einsum("XYD,dD->XYd", discreteFluid, latticeCoordinates)
+     else:
+         macroVelocity = torch.einsum("XYZD,dD->XYZd", discreteFluid, latticeCoordinates)
+     macroVelocity = torch.div(macroVelocity, density[..., torch.newaxis])
+     return macroVelocity
 
 def computeEquilibrium(macroVelocity, density, weights, latticeCoordinates, speedSound=1/np.sqrt(3)):
         macroL2 = torch.norm(macroVelocity, p=2, dim=-1)
@@ -33,6 +36,56 @@ def computeEquilibrium(macroVelocity, density, weights, latticeCoordinates, spee
             
         return fluidEquilibrium
 
+
+def generateLatticesConfig(model: str):
+    if model.upper() == "D3Q19":
+        latticeCoordinates = [  [0, 1, -1, 0, 0, 0, 0, 1, -1, 1, -1, 1, -1, 1, -1, 0, 0, 0, 0],
+                                [0, 0, 0, 1, -1, 0, 0, 1, -1, 0, 0, -1, 1, 0, 0, 1, -1, 1, -1],
+                                [0, 0, 0, 0, 0, 1, -1, 0, 0, 1, -1, 0, 0, -1, 1, 1, -1, -1, 1]
+                ]
+        weights = [1/3] + 6*[1/18] + 12*[1/36]
+        lattices = np.arange(19)
+        oppositeLattices = [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17]
+        leftlattices, rightlattices, toplattices, bottomlattices, frontlattices, backlattices = [], [], [], [], [], []
+    
+        for i in lattices:
+            if latticeCoordinates[1][i] == -1:
+                leftlattices.append(i)
+            if latticeCoordinates[1][i] == 1:
+                rightlattices.append(i)
+
+            if latticeCoordinates[2][i] == -1:
+                bottomlattices.append(i)
+            if latticeCoordinates[2][i] == 1:
+                toplattices.append(i)
+            
+            if latticeCoordinates[0][i] == 1:
+                frontlattices.append(i)
+            if latticeCoordinates[0][i] == -1:
+                backlattices.append(i)
+
+            inletVelocities = [2, 8, 10, 12, 14]
+            nonInletVelocities = [0, 3, 4, 5, 6, 15, 16, 17, 18]
+
+        directionallattices = {"left": leftlattices, "right":rightlattices, "top":toplattices, "bottom":bottomlattices, "front": frontlattices, "back":backlattices, 
+                               "inlet": inletVelocities, "noninlet":nonInletVelocities }
+
+    elif model.upper() == "D2Q9":
+        weights = list(np.array([4, 1, 1, 1, 1, 0.25, 0.25, 0.25, 0.25], dtype=np.float32)  / 9)
+        lattices = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        oppositeLattices = [0, 3, 4, 1, 2, 7, 8, 5, 6]
+        latticeCoordinates = [
+            [0, 1, 0, -1, 0, 1, -1, -1, 1],
+            [0, 0, 1, 0, -1, 1, 1, -1, -1]
+        ]
+        directionallattices = {
+            "left": [3, 6, 7],
+            "top": [2, 5, 6],
+            "right": [1, 5, 8],
+            "bottom": [4, 7, 8]
+            }
+    
+    return lattices, oppositeLattices, latticeCoordinates, weights, directionallattices
 
 
 
@@ -76,34 +129,3 @@ def show3D(f):
     ax.set_box_aspect([1, 1, 1])
 
     plt.show()
-
-
-def generateLatticesConfig(model: str):
-    if model.upper() == "D3Q19":
-        latticeCoordinates = [  [0, 1, -1, 0, 0, 0, 0, 1, -1, 1, -1, 1, -1, 1, -1, 0, 0, 0, 0],
-                                [0, 0, 0, 1, -1, 0, 0, 1, -1, 0, 0, -1, 1, 0, 0, 1, -1, 1, -1],
-                                [0, 0, 0, 0, 0, 1, -1, 0, 0, 1, -1, 0, 0, -1, 1, 1, -1, -1, 1]
-                ]
-        weights = [1/3] + 6*[1/18] + 12*[1/36]
-        lattices = np.arange(19)
-        oppositeLattices = [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17]
-        leftlattices = []
-        rightlattices = []
-        top_lattices = []
-        bottom_lattices = []
-        for i in lattices:
-            if latticeCoordinates[0][i] == -1:
-                leftlattices.append(i)
-            if latticeCoordinates[0][i] == 1:
-                rightlattices.append(i)
-        print(leftlattices)
-
-
-
-    else:
-        latticeCoordinates = []
-        weights = []
-        lattices = []
-        oppositeLattices = []
-    
-    return lattices, oppositeLattices, latticeCoordinates, weights
