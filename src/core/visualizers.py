@@ -18,8 +18,6 @@ import time
 
 
 
-
-
 def visualize(f, X, Y, Ci, Z=None, mode="2d", mask=None, grid=None, plotter=None):
     density = computeDensity(f)
     macro_velocities = computeMacroVelocity(f, density, Ci)
@@ -51,9 +49,6 @@ def visualize(f, X, Y, Ci, Z=None, mode="2d", mask=None, grid=None, plotter=None
         plt.clf()
         
         
-
-
-
 
 
 def readmask(file,Nx, Ny, device="cuda", ratio_Y=0.5, leftoffset=0):
