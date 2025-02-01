@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 
 from core.LBMSolvers import LBMSolver3D
 from core.visualizers import  FluidVisualizer, animate_4d_data
-from utils.utils import generateLatticesConfig, computeMacroVelocity, computeDensity
+from utils.utils import generateLatticesConfig, computeMacroVelocity, computeDensity, voxel3d
 
 import torch
 import numpy as np
@@ -16,7 +16,7 @@ from mpl_toolkits import mplot3d
 
 
 if __name__ == "__main__":
-    N_X, N_Y, N_Z = 100, 25, 25
+    N_X, N_Y, N_Z = 200, 50, 50
     DEVICE = "cuda"
     PRECISION = torch.float32
     N_DVELOCITIES = 19 #number of discrete velocities
@@ -37,10 +37,10 @@ if __name__ == "__main__":
 
 
     #SIMULATION PARAMETERS
-    RIGHT_VELOCITY = 0.1 #mach
+    RIGHT_VELOCITY = 0.05 #mach
     CYLINDER_RADIUS = N_Y // 5
-    REYNOLD_NUMBER = 200
-    MASK = "../../data/models/airplane.jpg"
+    REYNOLD_NUMBER = 300
+    MASK = "../../data/models/formula1.glb"
     
 
     velcity_profile = torch.zeros((N_X, N_Y, N_Z, 3)).to(DEVICE)
@@ -67,14 +67,15 @@ if __name__ == "__main__":
     # grid.plot()
 
     
-    
     L = CYLINDER_RADIUS
+    L = 50
+    mask = voxel3d(MASK, model_dims=L, space_dims=(N_X, N_Y, N_Z), x_shiftf=-30)
+    kinematic_viscosity = (RIGHT_VELOCITY * L) / REYNOLD_NUMBER
+    RELAXATION_TIME = max(1.0 / (3 * kinematic_viscosity + 0.5), 0.5)
+
     mask = torch.tensor(mask).to(DEVICE)
 
-    # mask, L = readmask(MASK, N_X, N_Y, ratio_Y=0.3, leftoffset=50)
-
-    kinematic_viscosity = (RIGHT_VELOCITY * L) / REYNOLD_NUMBER
-    RELAXATION_TIME = max(1.0 / (3 * kinematic_viscosity + 0.5), 0.5)  
+      
     print(RELAXATION_TIME)
 
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
 
     animation = []
 
-    for i in tqdm(range(5000)):
+    for i in tqdm(range(10000)):
 
         f = lbm.update(mask)
         if i % N_PLOT == 0:

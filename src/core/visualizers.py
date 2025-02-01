@@ -12,6 +12,8 @@ import cmasher as cmr
 from PIL import Image, ImageOps
 import numpy as np
 import pyvista as pv
+import open3d as o3d 
+from scipy.ndimage import zoom, rotate
 import time
 
 
@@ -48,42 +50,6 @@ def visualize(f, X, Y, Ci, Z=None, mode="2d", mask=None, grid=None, plotter=None
         plt.pause(0.0001)
         plt.clf()
         
-        
-
-
-def readmask(file,Nx, Ny, device="cuda", ratio_Y=0.5, leftoffset=0):
-
-    img = Image.open(file).convert("L")
-    img = np.array(ImageOps.exif_transpose(img))
-    img_ratio = img.shape[0] / img.shape[1]  # Height/Width ratio
-    new_y = int(Ny * ratio_Y)
-    new_x = int(new_y / img_ratio)
-    img = np.array(Image.fromarray(img).resize((new_x, new_y)))
-
-    lateral = np.sqrt(new_y**2 + new_x**2)
-    lenghtCharacteristic = max(new_x, new_y, lateral)
-
-    target_height = Ny
-    target_width = Nx
-    # Get the current dimensions of the image
-    current_height, current_width = img.shape[:2]
-
-    # Calculate padding for each side
-    pad_top = (target_height - current_height) // 2
-    pad_bottom = target_height - current_height - pad_top
-    pad_left = (target_width - current_width) // 2 
-    pad_right = target_width - current_width - pad_left 
-    padded_img = np.pad(
-        img,
-        ((pad_top, pad_bottom), (pad_left - leftoffset, pad_right + leftoffset)),  # Padding for height and width
-        mode="constant",
-        constant_values=255  # White padding
-    )
-    img = padded_img < np.mean(img)
-    img = img[::-1, :].T
-    return torch.tensor(img.copy()).to(device), lenghtCharacteristic
-
-
 
 
 class FluidVisualizer:
@@ -188,7 +154,7 @@ class FluidVisualizer:
 
 
 
-def animate_4d_data(data, output_filename=None, fps=10, cmap='viridis', opacity=0.5):
+def animate_4d_data(data, output_filename=None, fps=10, cmap='jet', opacity=0.7):
 
     time_steps, x_dim, y_dim, z_dim = data.shape
     # PyVista ImageData object
@@ -204,7 +170,11 @@ def animate_4d_data(data, output_filename=None, fps=10, cmap='viridis', opacity=
         current_data = data[t].flatten(order="F")
         grid.point_data["values"] = current_data
         plotter.clear()
-        plotter.add_volume(grid, scalars="values", opacity=opacity, cmap=cmap)
+        #dynamic opacities
+        opacities = np.linspace(0, opacity, 127).tolist()
+        opacities = opacities[::-1] + opacities
+
+        plotter.add_volume(grid, scalars="values", opacity=opacities, cmap=cmap)
         
     # Create the animation
     if output_filename:
@@ -215,5 +185,128 @@ def animate_4d_data(data, output_filename=None, fps=10, cmap='viridis', opacity=
             plotter.write_frame()
         else:
             plotter.render()
+
+
+
+
+
+######################################        
+
+def voxel3d(fpath, model_dims=100, space_dims=[200, 200, 200], x_shiftf=0, rotations=["xz"], resolutionPrecision=0.5):
+    mesh = o3d.io.read_triangle_mesh(fpath)
+
+    # Ensure the mesh is not empty
+    if mesh.is_empty():
+        raise ValueError("The mesh is empty. Please check the input file.")
+
+    model_dims = (model_dims, model_dims, model_dims)
+    grid_dimensions = model_dims
+
+    # Initialize a 3D NumPy array to represent the voxel grid
+    voxel_array = np.zeros(grid_dimensions, dtype=np.float32)
+
+    
+    # Populate the NumPy array with the voxel data
+    voxel_size = 100 # Adjust based on desired resolution
+    # print("Loading 3D ....")
+    while True:
+        try: 
+            voxel_array = np.zeros(grid_dimensions, dtype=np.float32)
+            voxel_grid = o3d.geometry.VoxelGrid.create_from_triangle_mesh(mesh, voxel_size)
+            # Get voxel indices
+            voxels = voxel_grid.get_voxels()
+            indices = np.array([voxel.grid_index for voxel in voxels])
+
+            for idx in indices:
+                voxel_array[tuple(idx)] = True
+
+            voxel_size *= resolutionPrecision
+            # print("Current Voxel Size: ", voxel_size)
+
+        except:
+            voxel_array = np.zeros(grid_dimensions, dtype=np.float32)
+            voxel_size /= resolutionPrecision
+            voxel_grid = o3d.geometry.VoxelGrid.create_from_triangle_mesh(mesh, voxel_size)
+            # Get voxel indices
+            voxels = voxel_grid.get_voxels()
+            indices = np.array([voxel.grid_index for voxel in voxels])
+
+            for idx in indices:
+                voxel_array[tuple(idx)] = True
+            break
+    
+    # print("Voxel Size: ", voxel_size)
+
+
+    
+    # voxel_array = zoom(voxel_array, scale_factor, order=1)
+
+    
+
+    #rotating
+    voxel_array = rotate(voxel_array, angle=90, axes=(0, 2), reshape=False, order=1)
+    voxel_array = rotate(voxel_array, angle=90, axes=(1, 2), reshape=False, order=1)
+
+    #padd into space dimensions
+    pd_x = space_dims[0] - model_dims[0]
+    pd_y = space_dims[1] - model_dims[1]
+    pd_z = space_dims[2] - model_dims[2]
+    voxel_array = np.pad(voxel_array, pad_width=((0, pd_x), (0, pd_y), (0, pd_z)), mode="constant", constant_values=False)
+
+
+    #centering the airplane
+    indices = np.stack(np.where(voxel_array == True), axis=-1)
+    # print(indices)
+    # print(indices.shape) 
+    med_bound = np.median(indices, axis=0)
+    # print("Medians: ", med_bound)
+    #y center
+    y_center_indices = med_bound[1]
+    y_center_axis = space_dims[1] // 2
+    y_shift = y_center_axis - y_center_indices + 1
+
+    z_center_indices = med_bound[2]
+    z_center_axis = space_dims[2] // 2
+    z_shift = z_center_axis - z_center_indices + 1
+
+    x_center_indices = med_bound[0]
+    x_center_axis = space_dims[0] // 2
+    x_shift = x_center_axis - x_center_indices + 1
+    
+    # print("Axis center is: ", x_center_axis)
+    # print("Model center is: ", x_center_indices)
+    # print("Shiftin Axis by", x_shift)
+
+    voxel_array = np.roll(voxel_array, shift=(x_shift, y_shift, z_shift), axis=(0, 1, 2))
+    voxel_array = np.roll(voxel_array, shift=x_shiftf, axis=0)   
+
+
+    
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection="3d")
+
+    # Get voxel positions where voxel_array is True
+    x, y, z = np.where(voxel_array)
+
+    # x, y, z = rotateAxes(x, y, z, rotations)
+
+    ax.scatter(x, y, z, c="black", marker="s")
+
+    # Labels and viewing angle
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+
+
+    ax.set_xlim(0, voxel_array.shape[0])
+    ax.set_ylim(0, voxel_array.shape[1])
+    ax.set_zlim(0, voxel_array.shape[2])
+
+
+    # plt.show()
+    return voxel_array.astype(bool)
+
+
         
 
