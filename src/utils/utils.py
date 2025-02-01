@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import trimesh
 
@@ -41,6 +40,28 @@ def computeEquilibrium(macroVelocity, density, weights, latticeCoordinates, spee
             
         return fluidEquilibrium
 
+##################################################
+def computeVelocityMagnitude(macroVelocities):
+    return torch.linalg.norm(macroVelocities, axis=-1, ord=2)
+
+
+################################################3
+def computeCurl(macroVelocities, mode="2d"):
+    if mode == "2d":
+        du_dx, du_dy = torch.gradient(macroVelocities[..., 0])
+        dv_dx, dv_dy = torch.gradient(macroVelocities[..., 1])
+        curl = du_dy - dv_dx
+    elif mode == "3d":
+        du_dx, du_dy, du_dz = torch.gradient(macroVelocities[..., 0])
+        dv_dx, dv_dy, dv_dz = torch.gradient(macroVelocities[..., 1])
+        dw_dx, dw_dy, dw_dz = torch.gradient(macroVelocities[..., 2])
+        curl_x = dw_dy - dv_dz
+        curl_y = du_dz - dw_dx
+        curl_z = dv_dx - du_dy
+        curl = torch.stack([curl_x, curl_y, curl_z], dim=-1)
+        curl = torch.linalg.norm(curl, axis=-1)
+    
+    return curl
 
 ##############################################
 def generateLatticesConfig(model: str):
@@ -76,6 +97,7 @@ def generateLatticesConfig(model: str):
 
         directionallattices = {"left": leftlattices, "right":rightlattices, "top":toplattices, "bottom":bottomlattices, "front": frontlattices, "back":backlattices, 
                                "inlet": inletVelocities, "noninlet":nonInletVelocities }
+        print(directionallattices)
 
     elif model.upper() == "D2Q9":
         weights = list(np.array([4, 1, 1, 1, 1, 0.25, 0.25, 0.25, 0.25], dtype=np.float32)  / 9)
@@ -89,54 +111,43 @@ def generateLatticesConfig(model: str):
             "left": [3, 6, 7],
             "top": [2, 5, 6],
             "right": [1, 5, 8],
-            "bottom": [4, 7, 8]
+            "bottom": [4, 7, 8], 
+            "vertical": [0, 2, 4], 
+            "horizental": [0, 1, 3]
             }
     
     return lattices, oppositeLattices, latticeCoordinates, weights, directionallattices
 
 
 ##############################################
-def show3D(f):
+def showMesh3D(f):
     scene = trimesh.load(f)
 
-    # If the file contains a single mesh, extract it
     if isinstance(scene, trimesh.Scene):
-        # Access the first geometry in the scene
         mesh = list(scene.geometry.values())[0]
     else:
-        # Directly assign the mesh if it's not a Scene
         mesh = scene
-
-    # Get the vertices and faces
     vertices = mesh.vertices
     faces = mesh.faces
 
-    # Normalize the vertices
-    min_coords = vertices.min(axis=0)  # Minimum along each axis
-    max_coords = vertices.max(axis=0)  # Maximum along each axis
-    center = (max_coords + min_coords) / 2  # Center of the bounding box
-    scale = (max_coords - min_coords).max()  # Maximum range (for uniform scaling)
-
-    # Translate vertices to the origin and scale them to fit within [-0.5, 0.5]^3
+    min_coords = vertices.min(axis=0)  
+    max_coords = vertices.max(axis=0)  
+    center = (max_coords + min_coords) / 2 
+    scale = (max_coords - min_coords).max() 
     normalized_vertices = (vertices - center) / scale
 
-    # Plot using Matplotlib
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
-    # Add the normalized mesh to the plot
     ax.add_collection3d(Poly3DCollection(normalized_vertices[faces], alpha=0.5, edgecolor='k'))
 
-    # Set axis limits for the normalized plot
     ax.set_xlim(-0.7, 0.7)
     ax.set_ylim(-0.7, 0.7)
     ax.set_zlim(-0.7, 0.7)
-
-    # Set the box aspect ratio to be equal
     ax.set_box_aspect([1, 1, 1])
 
     plt.show()
 
+#########################################
 
 
 
