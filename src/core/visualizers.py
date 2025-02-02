@@ -51,7 +51,7 @@ class FluidVisualizer2D:
 
 ##########################################33
 class FluidVisualizer3D:
-    def __init__(self, dimensions, saveOutput=False, outputFile=None, fps=10, cmap="jet", maxOpacity=0.2):
+    def __init__(self, dimensions, saveOutput=False, outputFile=None, fps=10, cmap="jet", maxOpacity=0.1):
         self.data = None
         self.dimensions = dimensions
         self.timeSteps = 0
@@ -59,8 +59,9 @@ class FluidVisualizer3D:
         self.outputFile = outputFile
         self.fps = fps
         self.cmap = cmap
-        self.opacities = np.linspace(0, maxOpacity, 127).tolist()
-        self.opacities = self.opacities[::-1] + self.opacities
+        opacitiesL = np.linspace(0, maxOpacity, 50).tolist()
+        opacitiesR = np.linspace(0, maxOpacity, 50).tolist()
+        self.opacities = opacitiesL[::-1] + opacitiesR
         self.animation = []
 
         self.grid = pv.ImageData(dimensions=self.dimensions)

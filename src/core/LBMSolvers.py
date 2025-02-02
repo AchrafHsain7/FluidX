@@ -31,6 +31,7 @@ class LBMInterface(ABC):
         self.directionalVelocities = directionalVelocities
         self.latticeIndexes = latticeIndexes
         self.oppositeIndexes = oppositeIndexes
+        self.reynoldNumber = reynoldNumber
 
     def computeDensity(self):
         self.density = torch.sum(self.discreteFluid, dim=-1)
@@ -67,10 +68,26 @@ class LBMSolver2D(LBMInterface):
         self.profileVelocity =  torch.zeros((initialDensity.shape[0], initialDensity.shape[1],  2)).to(device)
         self.profileVelocity[:, :, 0] = rightVelocity
         self.discreteFluid = computeEquilibrium(self.profileVelocity, self.density, self.weights, self.latticeCoordinates)
+        self.gravityVector = torch.tensor([0, -9.8]).to(device)
+        self.gravityOn = False
 
     
     def collide(self):
         f_collision = self.discreteFluid - self.relaxation * (self.discreteFluid - self.equilibriumFluid)
+        if self.gravityOn:
+            gravity = torch.zeros_like(f_collision)
+            for i in range(self.numberVelocities):
+                # ci = torch.tensor([self.latticeCoordinates[0, i], self.latticeCoordinates[1, i]]).to(self.device)
+                wi = self.weights[i]
+                g = self.gravityVector
+                ci = self.latticeCoordinates.T
+                macroCoordinates = torch.einsum("NXd,dq->NXq", self.macroVelocity, self.latticeCoordinates)
+                term1 = (ci[torch.newaxis, torch.newaxis, ...] - self.macroVelocity[:, :, torch.newaxis, :]) / self.speedSound**2
+                term2 = (macroCoordinates.unsqueeze(-1) * ci) / self.speedSound**4
+                gi = ((1 - self.relaxation*0.5) * wi 
+                        * torch.sum((term1 + term2) * g[None, None, None,:], dim=-1))
+                gravity[:, :, i] = gi.sum(dim=-1)
+            f_collision += gravity* (10/(300 * 500))
         return f_collision
     
     def propagate(self, f_colision):
@@ -190,6 +207,12 @@ class LBMSolver3D(LBMInterface):
     def update(self, mask):
         #right boundary condition: flow not coming back from front boundary 
         self.discreteFluid[-1, :, :, self.directionalVelocities["back"]] = self.discreteFluid[-2, :, :, self.directionalVelocities["back"]]
+        if self.confined:
+            self.discreteFluid[:, -1, :, self.directionalVelocities["right"]] = self.discreteFluid[:, -2, :, self.directionalVelocities["right"]]
+            self.discreteFluid[:, 0, :, self.directionalVelocities["left"]] = self.discreteFluid[:, 1, :, self.directionalVelocities["left"]]
+            
+            self.discreteFluid[:, :, -1, self.directionalVelocities["bottom"]] = self.discreteFluid[:, :, -2, self.directionalVelocities["bottom"]]
+            self.discreteFluid[:, :, 0, self.directionalVelocities["top"]] = self.discreteFluid[:, :, 1, self.directionalVelocities["top"]]
         #compute moments and densities
         self.computeDensity()
         self.computeMacroVelocity()

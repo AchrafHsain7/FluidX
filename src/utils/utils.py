@@ -97,7 +97,6 @@ def generateLatticesConfig(model: str):
 
         directionallattices = {"left": leftlattices, "right":rightlattices, "top":toplattices, "bottom":bottomlattices, "front": frontlattices, "back":backlattices, 
                                "inlet": inletVelocities, "noninlet":nonInletVelocities }
-        print(directionallattices)
 
     elif model.upper() == "D2Q9":
         weights = list(np.array([4, 1, 1, 1, 1, 0.25, 0.25, 0.25, 0.25], dtype=np.float32)  / 9)

@@ -37,7 +37,7 @@ if __name__ == "__main__":
     REYNOLD_NUMBER = 5000
     MASK = "../../data/models/airplane.jpg"
     HEIGH_RATIO = 0.5
-    CONFINED_MODE = False
+    CONFINED_MODE = True
     
     # MASK
     X, Y = np.meshgrid(np.arange(N_X), np.arange(N_Y), indexing="ij")
