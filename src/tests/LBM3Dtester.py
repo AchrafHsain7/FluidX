@@ -10,6 +10,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from mpl_toolkits import mplot3d
+import cmasher as cmr
 
 
 
@@ -34,8 +35,8 @@ if __name__ == "__main__":
     CYLINDER_RADIUS = N_Y // 5
     CYLINDER_HEIGH = N_Y // 4
     REYNOLD_NUMBER = 200
-    MASK = "../../data/models/formula1.glb"
-    L = 40
+    MASK = "../../data/models/airplane.glb"
+    L = 50
     CONFINED = True
     X, Y, Z = np.meshgrid(np.arange(N_X), np.arange(N_Y), np.arange(N_Z), indexing="ij")
     maskLoader = MaskLoader3D(MASK, L, (N_X, N_Y, N_Z), xShift=-70, rotations=[("xz", 90), ("yz", 90)], device=DEVICE)
@@ -64,6 +65,7 @@ if __name__ == "__main__":
             density = computeDensity(f)
             macroVelocities = computeMacroVelocity(f, density, Ci)
             velocity = computeVelocityMagnitude(macroVelocities).cpu().numpy()
+            curl = computeCurl(macroVelocities).cpu().numpy()
             vis.run(velocity, visualize=True)
 
 

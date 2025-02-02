@@ -46,12 +46,12 @@ def computeVelocityMagnitude(macroVelocities):
 
 
 ################################################3
-def computeCurl(macroVelocities, mode="2d"):
-    if mode == "2d":
+def computeCurl(macroVelocities):
+    if len(macroVelocities.shape) == 3:
         du_dx, du_dy = torch.gradient(macroVelocities[..., 0])
         dv_dx, dv_dy = torch.gradient(macroVelocities[..., 1])
         curl = du_dy - dv_dx
-    elif mode == "3d":
+    elif len(macroVelocities.shape) == 4:
         du_dx, du_dy, du_dz = torch.gradient(macroVelocities[..., 0])
         dv_dx, dv_dy, dv_dz = torch.gradient(macroVelocities[..., 1])
         dw_dx, dw_dy, dw_dz = torch.gradient(macroVelocities[..., 2])
