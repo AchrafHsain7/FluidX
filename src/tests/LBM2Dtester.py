@@ -32,12 +32,12 @@ if __name__ == "__main__":
     #SIMULATION PARAMETERS
     N_ITERATIONS = 10_000
     N_PLOT = 150
-    RIGHT_VELOCITY = 0.02 #mach
+    RIGHT_VELOCITY = 0.05 #mach
     CYLINDER_RADIUS = N_Y // 9
-    REYNOLD_NUMBER = 5000
+    REYNOLD_NUMBER = 2500
     MASK = "../../data/models/airplane.jpg"
     HEIGH_RATIO = 0.5
-    CONFINED_MODE = True
+    CONFINED_MODE = False
     
     # MASK
     X, Y = np.meshgrid(np.arange(N_X), np.arange(N_Y), indexing="ij")

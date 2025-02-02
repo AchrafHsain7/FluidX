@@ -121,6 +121,20 @@ class LBMSolver2D(LBMInterface):
 
         return f_collison
     
+    def benchmark(self):
+        self.discreteFluid[-1, :, self.directionalVelocities["left"]] = self.discreteFluid[-2, :, self.directionalVelocities["left"]]
+        if self.confined:
+            self.discreteFluid[:, -1, self.directionalVelocities["bottom"]] = self.discreteFluid[:, -2, self.directionalVelocities["bottom"]]
+            self.discreteFluid[: , 0, self.directionalVelocities["top"]] = self.discreteFluid[:, 1, self.directionalVelocities["top"]]
+        self.computeDensity()
+        self.computeMacroVelocity()
+        self.inflow()
+        self.computeEquilibrium()
+        self.discreteFluid[0, :, self.directionalVelocities["right"]] = self.equilibriumFluid[0, :, self.directionalVelocities["right"]]
+        self.propagate(self.discreteFluid)
+        return computeDensity(self.discreteFluid)
+
+    
 
     def update(self, mask):
         #right boundary condition: flow not coming back from right boundary 
@@ -203,6 +217,16 @@ class LBMSolver3D(LBMInterface):
             )
 
         return f_collison
+    
+    def benchmark(self):
+        self.discreteFluid[-1, :, :, self.directionalVelocities["back"]] = self.discreteFluid[-2, :, :, self.directionalVelocities["back"]]
+        self.computeDensity()
+        self.computeMacroVelocity()
+        self.inflow()
+        self.computeEquilibrium()
+        self.discreteFluid[0, :, :, self.directionalVelocities["front"]] = self.equilibriumFluid[0, :, :, self.directionalVelocities["front"]]
+        self.propagate(self.discreteFluid)
+        return computeDensity(self.discreteFluid)
     
     def update(self, mask):
         #right boundary condition: flow not coming back from front boundary 
