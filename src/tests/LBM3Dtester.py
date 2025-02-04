@@ -37,9 +37,9 @@ if __name__ == "__main__":
     REYNOLD_NUMBER = 200
     MASK = "../../data/models/airplane.glb"
     L = 50
-    CONFINED = True
+    CONFINED = False
     X, Y, Z = np.meshgrid(np.arange(N_X), np.arange(N_Y), np.arange(N_Z), indexing="ij")
-    maskLoader = MaskLoader3D(MASK, L, (N_X, N_Y, N_Z), xShift=-70, rotations=[("xz", 90), ("yz", 90)], device=DEVICE)
+    maskLoader = MaskLoader3D(MASK, L, (N_X, N_Y, N_Z), xShift=-10, rotations=[("xz", 90), ("yz", 90)], device=DEVICE)
     mask = maskLoader.load(visualize=True)
     
 

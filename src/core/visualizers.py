@@ -16,27 +16,34 @@ import pyvista as pv
 
 #############################################3
 class FluidVisualizer2D:
-    def __init__(self, discretCoordinates, mask):
+    def __init__(self, discretCoordinates, mask, cmaps=[cmr.infinity, cmr.iceburn, cmr.fusion]):
         self.discretCoordinates = discretCoordinates
         self.mask = mask
+        self.cmaps = cmaps
+        plt.style.use('dark_background')
+
 
     def computations(self, discretFluid):
         density = computeDensity(discretFluid)
         macro_velocities = computeMacroVelocity(discretFluid, density, self.discretCoordinates)
 
         velocity_magnitude = computeVelocityMagnitude(macro_velocities)
-        curl = computeCurl(macro_velocities, mode="2d")
+        curl = computeCurl(macro_velocities)
 
         self.velocityMagnitude = np.flip(velocity_magnitude.cpu().numpy().T, axis=0)
         self.curl = np.flip(curl.cpu().numpy().T, axis=0)
+        self.density = np.flip(density.cpu().numpy().T, axis=0)
 
     def plot(self):
-        plt.subplot(211)
-        plt.imshow(self.velocityMagnitude, cmap="jet", aspect="equal")
+        plt.subplot(311)
+        plt.imshow(self.velocityMagnitude, cmap=self.cmaps[0], aspect="equal")
         plt.colorbar().set_label("Velocity Magnitude")
-        plt.subplot(212)
-        plt.imshow(self.curl, cmap=cmr.redshift, vmin=-0.02, vmax=0.02, aspect="equal")
+        plt.subplot(312)
+        plt.imshow(self.curl, cmap=self.cmaps[1], vmin=-0.02, vmax=0.02, aspect="equal")
         plt.colorbar().set_label("Vorticity Magnitude")
+        plt.subplot(313)
+        plt.imshow(self.density, cmap=self.cmaps[2], aspect="equal")
+        plt.colorbar().set_label("Density")
 
         plt.tight_layout()
         plt.draw()

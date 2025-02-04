@@ -148,5 +148,18 @@ def showMesh3D(f):
 
 #########################################
 
+def createCylinder(dimensions, center, radius, height=None, device="cuda"):
+    if len(dimensions) == 2:
+        X, Y = dimensions
+        cylinder = np.sqrt((X - center[0])**2 + (Y - center[1])**2) < radius
+        return torch.tensor(cylinder.astype(bool)).to(device), radius
 
-
+    elif len(dimensions) == 3:
+        X, Y, Z = dimensions
+        cylinder = (np.sqrt((X - center[0])**2 + (Z - center[2])**2) < radius).astype(bool)
+        cylinder = cylinder & (Y >= height ) & (Y <= (X.shape[1] - height))
+        l = X.shape[1] - 2*height
+        return torch.tensor(cylinder).to(device), l
+    
+#################################################33
+        
