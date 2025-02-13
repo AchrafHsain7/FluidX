@@ -1,0 +1,18 @@
+{
+    "Nx" : 800,
+    "Ny" : 200, 
+    "device": "cuda",
+    "precision": "torch.float32",
+    "Nvelocities": 9,
+    "iterations": 50000,
+    "plotsFreq": 100,
+    "rightVelocity": 0.05,
+    "reynoldNumber": 777,
+    "mask": "../../data/models/airplane.jpg",
+    "heightRatio": 0.5,
+    "boundaryMode": "circular",
+    "leftOffset": -120,
+    "upOffset": 0,
+    "plotNums": 2,
+    "colorLims": [-0.02, 0.02]
+}

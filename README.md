@@ -2,8 +2,9 @@
 
 
 ## To DO:
-- Benchmark 2D/3D implementation
+- JSON configuration reader
+- Data Collection
+- VAE implementation
 - Data Analysis Dashbord ....
-- ML Optimization .....
 - Quantum Research ....
 - API/Server implementation

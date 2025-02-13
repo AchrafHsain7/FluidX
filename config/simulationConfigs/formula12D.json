@@ -1,0 +1,18 @@
+{
+    "Nx" : 800,
+    "Ny" : 200, 
+    "device": "cuda",
+    "precision": "torch.float32",
+    "Nvelocities": 9,
+    "iterations": 50000,
+    "plotsFreq": 100,
+    "rightVelocity": 0.1,
+    "reynoldNumber": 500,
+    "mask": "../../data/models/formula1.jpg",
+    "heightRatio": 0.3,
+    "boundaryMode": "bounce",
+    "leftOffset": -200,
+    "upOffset": 60,
+    "plotNums": 2,
+    "colorLims": [-0.015, 0.015]
+}
