@@ -9,16 +9,18 @@ import matplotlib.pyplot as plt
 
 ##############################################################################
 class MaskLoader2D:
-    def __init__(self,  Nx, Ny, heightRatio, leftOffset=0, device="cuda"):
-        self.Nx = Nx
-        self.Ny = Ny
-        self.heightRatio = heightRatio
-        self.leftOffset = leftOffset
-        self.device = device
+    def __init__(self, config):
+        self.Nx = config["Nx"]
+        self.Ny = config["Ny"]
+        self.heightRatio = config["heightRatio"]
+        self.leftOffset = config["leftOffset"]
+        self.upOffset = config["upOffset"]
+        self.device = config["device"]
         self.img = None
+        self.maskPath = config["mask"]
 
-    def loadMask(self, maskPath):
-        img = Image.open(maskPath).convert("L")
+    def loadMask(self):
+        img = Image.open(self.maskPath).convert("L")
         img = np.array(ImageOps.exif_transpose(img))
         img_ratio = img.shape[0] / img.shape[1]  # Height/Width ratio
         self.newY = int(self.Ny * self.heightRatio)  #computing the desired height
@@ -41,15 +43,15 @@ class MaskLoader2D:
 
         padded_img = np.pad(
             self.img,
-            ((pad_top, pad_bottom), (pad_left + self.leftOffset, pad_right - self.leftOffset)),
+            ((pad_top + self.upOffset, pad_bottom - self.upOffset), (pad_left + self.leftOffset, pad_right - self.leftOffset)),
             mode="constant",
             constant_values=255 
         )
         img = padded_img < np.mean(self.img)
         self.mask = img[::-1, :].T
 
-    def getMask(self, maskPath):
-        self.loadMask(maskPath)
+    def getMask(self):
+        self.loadMask()
         self.padMask()
         charLength = self.computeCharacteristicL()
         return torch.tensor(self.mask.copy()).to(self.device), charLength
@@ -59,14 +61,14 @@ class MaskLoader2D:
 ##############################################################################
 class MaskLoader3D:
 
-    def __init__(self, filePath, modelDims, spaceDims, xShift=0, rotations=[], resolutionPrecision=0.5, device="cuda"):
-        self.filePath = filePath
-        self.modelDims = modelDims
-        self.spaceDims = spaceDims
-        self.xShift = xShift
-        self.rotations = rotations
-        self.resolutionPrecision = resolutionPrecision
-        self.device = device
+    def __init__(self, config):
+        self.filePath = config["mask"]
+        self.modelDims = config["maskCubeVolume"]
+        self.spaceDims = (config["Nx"], config["Ny"], config["Nz"])
+        self.xShift = config["frontOffset"]
+        self.rotations = config["rotations"]
+        self.resolutionPrecision = config["maskResolutionPrecision"]
+        self.device = config["device"]
 
 
     def loadVoxels(self):
@@ -150,10 +152,11 @@ class MaskLoader3D:
 
         self.loadVoxels()
         self.rotate()
-        self.paddings()
-        self.center()
         if visualize:
             self.plot()
+        self.paddings()
+        self.center()
+        
         
         return torch.tensor(self.voxels.astype(bool)).to(self.device)
         

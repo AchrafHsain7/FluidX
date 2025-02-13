@@ -16,9 +16,11 @@ import pyvista as pv
 
 #############################################3
 class FluidVisualizer2D:
-    def __init__(self, discretCoordinates, mask, cmaps=[cmr.infinity, cmr.iceburn, cmr.fusion]):
+    def __init__(self, discretCoordinates, mask, config, cmaps=[cmr.infinity, cmr.iceburn, cmr.fusion]):
         self.discretCoordinates = discretCoordinates
         self.mask = mask
+        self.plotNums = config["plotNums"]
+        self.clims = config["colorLims"]
         self.cmaps = cmaps
         plt.style.use('dark_background')
 
@@ -35,15 +37,26 @@ class FluidVisualizer2D:
         self.density = np.flip(density.cpu().numpy().T, axis=0)
 
     def plot(self):
-        plt.subplot(311)
-        plt.imshow(self.velocityMagnitude, cmap=self.cmaps[0], aspect="equal")
-        plt.colorbar().set_label("Velocity Magnitude")
-        plt.subplot(312)
-        plt.imshow(self.curl, cmap=self.cmaps[1], vmin=-0.02, vmax=0.02, aspect="equal")
-        plt.colorbar().set_label("Vorticity Magnitude")
-        plt.subplot(313)
-        plt.imshow(self.density, cmap=self.cmaps[2], aspect="equal")
-        plt.colorbar().set_label("Density")
+        if self.plotNums == 3:
+            plt.subplot(311)
+            plt.imshow(self.velocityMagnitude, cmap=self.cmaps[0], aspect="equal")
+            plt.colorbar().set_label("Velocity Magnitude")
+            plt.subplot(312)
+            plt.imshow(self.curl, cmap=self.cmaps[1], vmin=self.clims[0], vmax=self.clims[1], aspect="equal")
+            plt.colorbar().set_label("Vorticity Magnitude")
+            plt.subplot(313)
+            plt.imshow(self.density, cmap=self.cmaps[2], aspect="equal", vmin=0.97, vmax=1.03)
+            plt.colorbar().set_label("Density")
+        elif self.plotNums == 2:
+            plt.subplot(211)
+            plt.imshow(self.velocityMagnitude, cmap=self.cmaps[0], aspect="equal")
+            plt.colorbar().set_label("Velocity Magnitude")
+            plt.subplot(212)
+            plt.imshow(self.curl, cmap=self.cmaps[1], vmin=-0.02, vmax=0.02, aspect="equal")
+            plt.colorbar().set_label("Vorticity Magnitude")
+        else:
+            plt.imshow(self.velocityMagnitude, cmap=self.cmaps[0], aspect="equal")
+            plt.colorbar().set_label("Velocity Magnitude")
 
         plt.tight_layout()
         plt.draw()
@@ -58,16 +71,16 @@ class FluidVisualizer2D:
 
 ##########################################33
 class FluidVisualizer3D:
-    def __init__(self, dimensions, saveOutput=False, outputFile=None, fps=10, cmap="jet", maxOpacity=0.1):
+    def __init__(self, config, saveOutput=False, outputFile=None):
         self.data = None
-        self.dimensions = dimensions
+        self.dimensions = (config["Nx"], config["Ny"], config["Nz"])
         self.timeSteps = 0
         self.saveOutput = saveOutput
         self.outputFile = outputFile
-        self.fps = fps
-        self.cmap = cmap
-        opacitiesL = np.linspace(0, maxOpacity, 50).tolist()
-        opacitiesR = np.linspace(0, maxOpacity, 50).tolist()
+        self.fps = config["visualizationFPS"]
+        self.cmap = config["visualizationColorMap"]
+        opacitiesL = np.linspace(0, config["visualizationMaxOpacity"], 50).tolist()
+        opacitiesR = np.linspace(0, config["visualizationMaxOpacity"], 50).tolist()
         self.opacities = opacitiesL[::-1] + opacitiesR
         self.animation = []
 

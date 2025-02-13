@@ -12,26 +12,24 @@ import numpy as np
 
 ###################################################################################################################
 class LBMInterface(ABC):
-    def __init__(self, latticeCoordinates, weights, reynoldNumber,
-                  numberVelocities, initialDensity, directionalVelocities, rightVelocity,
-                  latticeIndexes, oppositeIndexes, characteristicLength,
-                    device="cuda", confined=False) ->None:
+    def __init__(self, config, latticeCoordinates, weights, directionalVelocities,
+                  latticeIndexes, oppositeIndexes, characteristicLength) ->None:
         
         self.latticeCoordinates = latticeCoordinates
         self.weights = weights
         self.speedSound = 1 / np.sqrt(3.0)
-        self.device = device
-        self.confined = confined
+        self.device = config["device"]
+        self.boundaryMode = config["boundaryMode"]
         self.equilibriumFluid = None
         self.macroVelocity = None
-        self.kinematicViscosity = (rightVelocity * characteristicLength) / reynoldNumber
+        self.kinematicViscosity = (config["rightVelocity"] * characteristicLength) / config["reynoldNumber"]
         self.relaxation = 1.0 / (3 * self.kinematicViscosity + 0.5)
-        self.density = initialDensity
-        self.numberVelocities = numberVelocities
+        self.numberVelocities = config["Nvelocities"]
         self.directionalVelocities = directionalVelocities
         self.latticeIndexes = latticeIndexes
         self.oppositeIndexes = oppositeIndexes
-        self.reynoldNumber = reynoldNumber
+        self.reynoldNumber = config["reynoldNumber"]
+        self.rightVelocity = config["rightVelocity"]
 
     def computeDensity(self):
         self.density = torch.sum(self.discreteFluid, dim=-1).to(self.device)
@@ -56,19 +54,16 @@ class LBMInterface(ABC):
 
 #####################################################################################################################
 class LBMSolver2D(LBMInterface):
-    def __init__(self, latticeCoordinates, weights, reynoldNumber,
-                  numberVelocities, initialDensity, directionalVelocities, rightVelocity,
-                latticeIndexes, oppositeIndexes, characteristicLength,
-                    device="cuda", confined=False):
-        super().__init__(latticeCoordinates, weights, reynoldNumber,
-                  numberVelocities, initialDensity, directionalVelocities, rightVelocity,
-                  latticeIndexes, oppositeIndexes, characteristicLength,
-                    device, confined)
+    def __init__(self, config, latticeCoordinates, weights, directionalVelocities,
+                  latticeIndexes, oppositeIndexes, characteristicLength):
+        super().__init__(config, latticeCoordinates, weights, directionalVelocities,
+                  latticeIndexes, oppositeIndexes, characteristicLength)
         
-        self.profileVelocity =  torch.zeros((initialDensity.shape[0], initialDensity.shape[1],  2)).to(device)
-        self.profileVelocity[:, :, 0] = rightVelocity
+        self.density = torch.ones((config["Nx"], config["Ny"])).to(config["device"])
+        self.profileVelocity =  torch.zeros((self.density.shape[0], self.density.shape[1],  2)).to(self.device)
+        self.profileVelocity[:, :, 0] = self.rightVelocity
         self.discreteFluid = computeEquilibrium(self.profileVelocity, self.density, self.weights, self.latticeCoordinates).to(self.device)
-        self.gravityVector = torch.tensor([0, -9.8]).to(device)
+        self.gravityVector = torch.tensor([0, -9.8]).to(self.device)
         self.gravityOn = False
 
     
@@ -123,9 +118,16 @@ class LBMSolver2D(LBMInterface):
     
     def benchmark(self):
         self.discreteFluid[-1, :, self.directionalVelocities["left"]] = self.discreteFluid[-2, :, self.directionalVelocities["left"]]
-        if not self.confined:
+        if self.boundaryMode == "free":
             self.discreteFluid[:, -1, self.directionalVelocities["bottom"]] = self.discreteFluid[:, -2, self.directionalVelocities["bottom"]]
             self.discreteFluid[: , 0, self.directionalVelocities["top"]] = self.discreteFluid[:, 1, self.directionalVelocities["top"]]
+        elif self.boundaryMode == "bounce":
+            print("Bouncing")
+            self.discreteFluid[:, -1, self.directionalVelocities["top"]] += self.discreteFluid[:, -1, self.directionalVelocities["bottom"]]
+            self.discreteFluid[:, 0, self.directionalVelocities["bottom"]] += self.discreteFluid[:, 0, self.directionalVelocities["top"]]
+            self.discreteFluid[:, -1, self.directionalVelocities["bottom"]] = 0
+            self.discreteFluid[:, 0, self.directionalVelocities["top"]] = 0
+            
         self.computeDensity()
         self.computeMacroVelocity()
         self.inflow()
@@ -140,9 +142,13 @@ class LBMSolver2D(LBMInterface):
     def update(self, mask):
         #right boundary condition: flow not coming back from right boundary 
         self.discreteFluid[-1, :, self.directionalVelocities["left"]] = self.discreteFluid[-2, :, self.directionalVelocities["left"]]
-        if not self.confined:
+        if self.boundaryMode == "free":
             self.discreteFluid[:, -1, self.directionalVelocities["bottom"]] = self.discreteFluid[:, -2, self.directionalVelocities["bottom"]]
             self.discreteFluid[: , 0, self.directionalVelocities["top"]] = self.discreteFluid[:, 1, self.directionalVelocities["top"]]
+        elif self.boundaryMode == "bounce":
+            for i in range(self.numberVelocities):
+                self.discreteFluid[:, -1, self.latticeIndexes[i]] = self.discreteFluid[:, -1, self.oppositeIndexes[i]]
+                self.discreteFluid[:, 0, self.latticeIndexes[i]] = self.discreteFluid[:, 0, self.oppositeIndexes[i]]
         #compute moments and densities
         self.computeDensity()
         self.computeMacroVelocity()
@@ -164,18 +170,16 @@ class LBMSolver2D(LBMInterface):
 
 
 class LBMSolver3D(LBMInterface):
-    def __init__(self, latticeCoordinates, weights, reynoldNumber,
-                  numberVelocities, initialDensity, directionalVelocities, rightVelocity,
-                  latticeIndexes, oppositeIndexes, characteristicLength,
-                    device="cuda", confined=False):
-        super().__init__(latticeCoordinates, weights, reynoldNumber,
-                  numberVelocities, initialDensity, directionalVelocities, rightVelocity,
-                  latticeIndexes, oppositeIndexes, characteristicLength,
-                    device, confined)
+    def __init__(self, config, latticeCoordinates, weights, directionalVelocities,
+                  latticeIndexes, oppositeIndexes, characteristicLength):
+        super().__init__(config, latticeCoordinates, weights, directionalVelocities,
+                  latticeIndexes, oppositeIndexes, characteristicLength)
         
-        self.profileVelocity =  torch.zeros((initialDensity.shape[0], initialDensity.shape[1], initialDensity.shape[2], 3)).to(device)
-        self.profileVelocity[:, :, :, 0] = rightVelocity
-        self.discreteFluid = computeEquilibrium(self.profileVelocity, self.density, self.weights, self.latticeCoordinates)
+        self.density = torch.ones((config["Nx"], config["Ny"], config["Nz"])).to(config["device"])
+        self.profileVelocity =  torch.zeros((self.density.shape[0], self.density.shape[1], self.density.shape[2],  3)).to(self.device)
+        self.profileVelocity[:, :, :, 0] = self.rightVelocity
+        self.discreteFluid = computeEquilibrium(self.profileVelocity, self.density, self.weights, self.latticeCoordinates).to(self.device)
+        
         
         
     def propagate(self, f_colision):
@@ -221,7 +225,7 @@ class LBMSolver3D(LBMInterface):
     
     def benchmark(self):
         self.discreteFluid[-1, :, :, self.directionalVelocities["back"]] = self.discreteFluid[-2, :, :, self.directionalVelocities["back"]]
-        if not self.confined:
+        if self.boundaryMode == "free":
             self.discreteFluid[:, -1, :, self.directionalVelocities["left"]] = self.discreteFluid[:, -2, :, self.directionalVelocities["left"]]
             self.discreteFluid[:, 0, :, self.directionalVelocities["right"]] = self.discreteFluid[:, 1, :, self.directionalVelocities["right"]]
             self.discreteFluid[:, :, -1, self.directionalVelocities["bottom"]] = self.discreteFluid[:, :, -2, self.directionalVelocities["bottom"]]
@@ -238,10 +242,9 @@ class LBMSolver3D(LBMInterface):
     def update(self, mask):
         #right boundary condition: flow not coming back from front boundary 
         self.discreteFluid[-1, :, :, self.directionalVelocities["back"]] = self.discreteFluid[-2, :, :, self.directionalVelocities["back"]]
-        if not self.confined:
+        if self.boundaryMode == "free":
             self.discreteFluid[:, -1, :, self.directionalVelocities["left"]] = self.discreteFluid[:, -2, :, self.directionalVelocities["left"]]
             self.discreteFluid[:, 0, :, self.directionalVelocities["right"]] = self.discreteFluid[:, 1, :, self.directionalVelocities["right"]]
-            
             self.discreteFluid[:, :, -1, self.directionalVelocities["bottom"]] = self.discreteFluid[:, :, -2, self.directionalVelocities["bottom"]]
             self.discreteFluid[:, :, 0, self.directionalVelocities["top"]] = self.discreteFluid[:, :, 1, self.directionalVelocities["top"]]
         #compute moments and densities

@@ -16,47 +16,33 @@ import cmasher as cmr
 
 if __name__ == "__main__":
 
-    #GENERAL
-    N_X, N_Y = 800, 200
-    DEVICE = "cuda"
-    PRECISION = torch.float32
-    N_DVELOCITIES = 9 
     
+    CONFIG = loadConfig("../../config/simulationConfigs/airplane2D.json")
+
     #LATTICES
     LATTICES, OPPOSITE_LATTICES, Ci, WEIGHTS, DIRECTIONAL_VELOCITIES = generateLatticesConfig("D2Q9")
-    WEIGHTS = torch.tensor(WEIGHTS).to(DEVICE)
-    Ci = torch.tensor(Ci, dtype=PRECISION).to(DEVICE)
-    LATTICES = torch.tensor(LATTICES).to(DEVICE)
-    OPPOSITE_LATTICES = torch.tensor(OPPOSITE_LATTICES).to(DEVICE)
+    WEIGHTS = torch.tensor(WEIGHTS).to(CONFIG["device"])
+    Ci = torch.tensor(Ci, dtype=torch.float32).to(CONFIG["device"])
+    LATTICES = torch.tensor(LATTICES).to(CONFIG["device"])
+    OPPOSITE_LATTICES = torch.tensor(OPPOSITE_LATTICES).to(CONFIG["device"])
 
 
-    #SIMULATION PARAMETERS
-    N_ITERATIONS = 50_000
-    N_PLOT = 100
-    RIGHT_VELOCITY = 0.05 #mach
-    CYLINDER_RADIUS = N_Y // 9
-    REYNOLD_NUMBER = 1000
-    MASK = "../../data/models/airplane.jpg"
-    HEIGH_RATIO = 0.5
-    CONFINED_MODE = True
     
     # MASK
-    X, Y = np.meshgrid(np.arange(N_X), np.arange(N_Y), indexing="ij")
-    maskLoader = MaskLoader2D(N_X, N_Y, HEIGH_RATIO, leftOffset=-100, device=DEVICE)
-    mask, L = maskLoader.getMask(MASK)
+    X, Y = np.meshgrid(np.arange(CONFIG["Nx"]), np.arange(CONFIG["Ny"]), indexing="ij")
+    maskLoader = MaskLoader2D(CONFIG)
+    mask, L = maskLoader.getMask()
     # mask, L = createCylinder((X, Y), (N_X//5, N_Y//2), N_Y//9)
 
 
     #SOLVER
-    vis = FluidVisualizer2D(Ci, mask, cmaps=[cmr.guppy_r, cmr.iceburn, cmr.fusion_r])
-    lbm = LBMSolver2D(Ci, WEIGHTS, REYNOLD_NUMBER, N_DVELOCITIES, torch.ones((N_X, N_Y)).to(DEVICE), 
-                      DIRECTIONAL_VELOCITIES, RIGHT_VELOCITY, LATTICES, 
-                      OPPOSITE_LATTICES, L,  confined=CONFINED_MODE)
+    vis = FluidVisualizer2D(Ci, mask, CONFIG, cmaps=[cmr.guppy_r, cmr.iceburn, cmr.wildfire])
+    lbm = LBMSolver2D(CONFIG, Ci, WEIGHTS,DIRECTIONAL_VELOCITIES,LATTICES, OPPOSITE_LATTICES, L)
     
 
     #main loop
-    for i in tqdm(range(N_ITERATIONS)):
+    for i in tqdm(range(CONFIG["iterations"])):
         f = lbm.update(mask)
-        if i % N_PLOT == 0:
+        if i % CONFIG["plotsFreq"] == 0:
             vis.update(f)
     

@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import trimesh
+import json
 
 
 
@@ -162,4 +163,10 @@ def createCylinder(dimensions, center, radius, height=None, device="cuda"):
         return torch.tensor(cylinder).to(device), l
     
 #################################################33
-        
+
+def loadConfig(fpath):
+    with open(fpath, "r") as f:
+        config = json.load(f)
+    return config
+
+#######################################################
