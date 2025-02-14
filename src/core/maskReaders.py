@@ -141,7 +141,8 @@ class MaskLoader3D:
         ax.set_ylabel("Y")
         ax.set_zlabel("Z")
 
-        ax.set_xlim(0, self.modelDims)
+        centerX = self.spaceDims[0]//2 + self.xShift
+        ax.set_xlim(centerX-self.modelDims//2, centerX+self.modelDims//2)
         ax.set_ylim(0, self.modelDims)
         ax.set_zlim(0, self.modelDims)
 
@@ -152,10 +153,10 @@ class MaskLoader3D:
 
         self.loadVoxels()
         self.rotate()
-        if visualize:
-            self.plot()
         self.paddings()
         self.center()
+        if visualize:
+            self.plot()
         
         
         return torch.tensor(self.voxels.astype(bool)).to(self.device)
