@@ -127,7 +127,8 @@ class MaskLoader3D:
         y_shift = (self.spaceDims[1] // 2) - med_bound[1] + 1
         z_shift = (self.spaceDims[2] // 2) - med_bound[2] + 1
 
-        self.voxels = np.roll(self.voxels, shift=(x_shift, y_shift, z_shift), axis=(0, 1, 2))
+
+        self.voxels = np.roll(self.voxels, shift=(int(x_shift), int(y_shift), int(z_shift)), axis=[0, 1, 2])
         self.voxels = np.roll(self.voxels, shift=self.xShift, axis=0) 
 
     
@@ -161,13 +162,6 @@ class MaskLoader3D:
         
         return torch.tensor(self.voxels.astype(bool)).to(self.device)
         
-
-
-    
-
-          
-
-
 
 
 
