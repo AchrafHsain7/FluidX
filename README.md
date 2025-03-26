@@ -2,9 +2,10 @@
 
 
 ## To DO:
-- JSON configuration reader
 - Data Collection
 - VAE implementation
-- Data Analysis Dashbord ....
+- PCA
 - Quantum Research ....
+- Better Visualizations
+- Data Analysis Dashbord ....
 - API/Server implementation

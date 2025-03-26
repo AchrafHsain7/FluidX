@@ -1,19 +1,21 @@
-import torch
-import numpy as np
+import sys
+import os
+from tqdm import tqdm
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
+
+from core.Simulator import FluidSimulator
+
 
 
 
 class DataCollector:
-    def __init__(self, lbmSolver, visualizer, saveFrequency, savePath, configPath):
-        self.dataInput = []
-        self.dataOutput = []
-        self.lbmSolver = lbmSolver
-        self.visualizer = visualizer
-        self.savePath = savePath
-        self.configPath = configPath
-        self.saveFrequency = saveFrequency
+    def __init__(self, collectionConfigs):
+        self.collectionConfigs = collectionConfigs
+
 
     def collect(self):
-        ...
-        #Run the data collector and save every freq the data and add to data
-        #[::2, ::2, ::2]  save the "input" and "output"
+        for c, frq, f in tqdm(self.collectionConfigs):
+            print(c, frq, f)
+            fs = FluidSimulator(c)
+            fs.collectData(frq, f)
+    

@@ -16,9 +16,8 @@ import pyvista as pv
 
 #############################################3
 class FluidVisualizer2D:
-    def __init__(self, discretCoordinates, mask, config, cmaps=[cmr.infinity, cmr.iceburn, cmr.fusion]):
+    def __init__(self, discretCoordinates, config, cmaps=[cmr.infinity, cmr.iceburn, cmr.fusion]):
         self.discretCoordinates = discretCoordinates
-        self.mask = mask
         self.plotNums = config["plotNums"]
         self.clims = config["colorLims"]
         self.cmaps = cmaps
@@ -95,7 +94,7 @@ class FluidVisualizer3D:
         self.plotter.add_volume(self.grid, scalars="values", opacity=self.opacities, cmap=self.cmap)
 
     
-    def run(self, data, visualize=False):
+    def run(self, data, dataPlot="velocity", visualize=False):
         self.update(data)
         if self.saveOutput:
             self.plotter.write_frame()

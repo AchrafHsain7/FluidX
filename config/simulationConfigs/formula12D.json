@@ -1,4 +1,5 @@
 {
+    "latticeMode": "D2Q9",
     "Nx" : 800,
     "Ny" : 200, 
     "device": "cuda",
@@ -6,13 +7,13 @@
     "Nvelocities": 9,
     "iterations": 50000,
     "plotsFreq": 100,
-    "rightVelocity": 0.1,
-    "reynoldNumber": 500,
+    "rightVelocity": 0.05,
+    "reynoldNumber": 1000,
     "mask": "../../data/models/formula1.jpg",
     "heightRatio": 0.3,
-    "boundaryMode": "bounce",
+    "boundaryMode": "circular",
     "leftOffset": -200,
-    "upOffset": 60,
+    "upOffset": 0,
     "plotNums": 2,
-    "colorLims": [-0.015, 0.015]
+    "colorLims": [-0.01, 0.01]
 }
