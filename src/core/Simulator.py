@@ -52,18 +52,18 @@ class FluidSimulator:
                     velocity = computeVelocityMagnitude(self.lbm.macroVelocity).cpu().numpy()
                     self.vis.run(velocity, visualize=True)
 
-    def collectData(self, saveFreq, saveFile):
+    def collectData(self, saveFreq, saveFile, warmup=0):
         data = []
         for i in tqdm(range(self.config["iterations"])):
             f = self.lbm.update(self.mask)
-            if i % saveFreq == 0:
+            if i % saveFreq == 0 and i > warmup:
                 density = computeDensity(f)
-                macro_velocities = computeMacroVelocity(f, density, self.discretCoordinates)
+                macro_velocities = computeMacroVelocity(f, density, self.lbm.latticeCoordinates)
                 curl = computeCurl(macro_velocities)
-                data.append(curl)
+                data.append(curl.cpu())
         
         datanp = np.array(data)
         print(datanp.shape)
-        np.savez_compressed(f"{saveFile}.npz", data=datanp)
+        np.savez_compressed(f"../../data/superResolution/{saveFile}.npz", data=datanp)
             
 

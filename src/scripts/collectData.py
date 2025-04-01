@@ -9,7 +9,8 @@ from utils.datacollectors import DataCollector
 
 if __name__ == "__main__":
     collectionConfigs = [
-        ("../../config/trainingConfigs/airplane2D.json", 25, "data1")
+        # configs, frequency, output file
+        ("../../config/trainingConfigs/circle.json", 25, "cylinderData", 2000)
     ]
 
     dc = DataCollector(collectionConfigs)

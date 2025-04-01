@@ -14,8 +14,10 @@ class DataCollector:
 
 
     def collect(self):
-        for c, frq, f in tqdm(self.collectionConfigs):
-            print(c, frq, f)
+        for c, frq, f, w in self.collectionConfigs:
+            print(">>>>>>>>>>>>>>>>>>>>")
+            print(f"FREQ: {frq}, FILE: {f}")
             fs = FluidSimulator(c)
             fs.collectData(frq, f)
+            print("<<<<<<<<<<<<<<<<<<<<<")
     

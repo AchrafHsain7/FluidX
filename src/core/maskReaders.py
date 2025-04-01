@@ -40,7 +40,7 @@ class MaskLoader2D:
         pad_bottom = self.Ny - current_height - pad_top
         pad_left = (self.Nx - current_width) // 2 
         pad_right = self.Nx - current_width - pad_left 
-
+       
         padded_img = np.pad(
             self.img,
             ((pad_top + self.upOffset, pad_bottom - self.upOffset), (pad_left + self.leftOffset, pad_right - self.leftOffset)),

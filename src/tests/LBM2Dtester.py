@@ -7,7 +7,7 @@ from core.Simulator import FluidSimulator
 
 
 if __name__ == "__main__":
-    fname = "airplane2D"
+    fname = "circle"
     if len(sys.argv) >= 2:
         fname = sys.argv[-1]
     fs = FluidSimulator(f"../../config/trainingConfigs/{fname}.json")

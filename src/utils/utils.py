@@ -170,4 +170,8 @@ def loadConfig(fpath):
     return config
 
 #######################################################
+def normalized_mse(x:torch.Tensor, y:torch.Tensor):
+  x_norm = (x - x.mean()) / (x.std() + 1e-8)
+  y_norm = (y - y.mean()) / (y.std() + 1e-8)
+  return torch.nn.functional.mse_loss(x_norm, y_norm)
 

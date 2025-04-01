@@ -2,10 +2,11 @@
 
 
 ## To DO:
-- Data Collection
-- VAE implementation
-- PCA
-- Quantum Research ....
-- Better Visualizations
+- Implement LSTM sampling
+- Implement QCBM sampling
+- Implement PixelCNN++ sampling
+- ADD Physic informed loss
+- Add perceptual loss
+- Add frequency domain loss
+- Larger Network + Residual Connections ?
 - Data Analysis Dashbord ....
-- API/Server implementation
