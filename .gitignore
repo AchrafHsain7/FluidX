@@ -1,3 +1,4 @@
 src/scripts/*.npz
 data/superResolution/*.npz
-res/*.pt
+results/*.pt
+capstone/*

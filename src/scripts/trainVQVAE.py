@@ -68,7 +68,7 @@ if __name__ == "__main__":
         plt.title(f"Epoch {k}")
         for i in range(9):
             plt.subplot(2, 9, i+1)
-            plt.imshow(OUTPUTS[k][0][i], cmap=cmr.iceburn, cmin=-0.02, cmax=0.02)
+            plt.imshow(OUTPUTS[k][0][i], cmap=cmr.iceburn, vmin=-0.02, vmax=0.02)
             plt.subplot(2, 9, (i+1)+9)
             plt.imshow(OUTPUTS[k][1][i], cmap=cmr.iceburn, cmin=-0.02, cmax=0.02)
 
