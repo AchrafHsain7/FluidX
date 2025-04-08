@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import trimesh
 import json
+import jax.numpy as jnp
 
 
 
@@ -174,4 +175,21 @@ def normalized_mse(x:torch.Tensor, y:torch.Tensor):
   x_norm = (x - x.mean()) / (x.std() + 1e-8)
   y_norm = (y - y.mean()) / (y.std() + 1e-8)
   return torch.nn.functional.mse_loss(x_norm, y_norm)
+###########################################################
+class MMD:
+    def __init__(self, bandwiths, dataSpace):
+        gammas = 1 / (2 * (bandwiths**2))
+        distance = jnp.abs(dataSpace[:, None] - dataSpace[None, :]) ** 2
+        self.kernel = sum(jnp.exp(-gamma * distance) for gamma in gammas) * len(bandwiths)
+        self.bandwiths = bandwiths
 
+    def kernel_expval(self, px, py):
+    #px is the predicted distribution
+    #py is the target distribution
+        return px @ self.kernel @ py
+
+    def __call__(self, px, py):
+        pxy = px - py 
+        return self.kernel_expval(pxy, pxy)
+
+###############################################################

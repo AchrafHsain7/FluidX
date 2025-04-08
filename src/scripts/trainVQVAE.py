@@ -34,7 +34,12 @@ if __name__ == "__main__":
     PLOTS = {"loss":[], "qloss":[], "closs":[]} #quantized and construction loss
     OUTPUTS = []
 
-    model = VQ_VAE(128, 32).cuda()
+    MINI = True
+
+    if MINI:
+        model = VQ_VAE(128, 24).cuda()
+    else:
+        model = VQ_VAE(128, 32).cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
     lossFunc = normalized_mse
     lossScaling = 1
@@ -67,14 +72,23 @@ if __name__ == "__main__":
         plt.figure(figsize=(15, 5))
         plt.title(f"Epoch {k}")
         for i in range(9):
+            j = np.random.randint(0, len(OUTPUTS[k][0]))
             plt.subplot(2, 9, i+1)
-            plt.imshow(OUTPUTS[k][0][i], cmap=cmr.iceburn, vmin=-0.02, vmax=0.02)
+            plt.imshow(OUTPUTS[k][0][j], cmap=cmr.iceburn, vmin=-0.02, vmax=0.02)
             plt.subplot(2, 9, (i+1)+9)
-            plt.imshow(OUTPUTS[k][1][i], cmap=cmr.iceburn, cmin=-0.02, cmax=0.02)
+            plt.imshow(OUTPUTS[k][1][j], cmap=cmr.iceburn)
 
         plt.tight_layout()
         plt.show()
     choice = input("Save? ")
     if choice.lower() == "y":
-        torch.save(model, "../../results/modelVQVAE.pt")
-        fig.savefig("../../results/TrainingLoss.png", dpi=300)
+        if MINI:
+            torch.save(model, "../../results/modelVQVAE_mini.pt")
+            fig.savefig("../../results/TrainingLoss_mini.png", dpi=300)
+        else:
+            torch.save(model, "../../results/modelVQVAE.pt")
+            fig.savefig("../../results/TrainingLoss.png", dpi=300)
+        
+
+
+
