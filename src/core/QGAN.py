@@ -6,6 +6,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
+
+import os 
+import sys 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
+from utils.utils import gaussian_dequantize
+
 class Discriminator(nn.Module):
     def __init__(self, input_shape=256*7, device="cuda"):
         super().__init__()
@@ -73,7 +79,13 @@ class QuantumGenerator(nn.Module):
         self.input_shape = input_shape
         self.qcircuit = QuantumCircuit(n_qubits, n_anscillatory, n_layers)
         self.device = device
-
+        data = np.load("../../results/codebook_mini.npz")
+        bin_to_real = gaussian_dequantize(list(data["bins"].flatten()), data["edges"])
+        self.bin_real_map = {} 
+        self.edges = data["edges"]
+        for b, r in zip(data["bins"].flatten(), bin_to_real):
+            self.bin_real_map[int(b)] = float(r)
+    
     def forward(self, x):
         patch_size = 2 ** self.input_shape #using 256 bin discretization
         outputs = torch.Tensor(x.size(0), 0).to(self.device)
@@ -92,7 +104,19 @@ class QuantumGenerator(nn.Module):
         indices = torch.argmax(outputs, dim=2).unsqueeze(2)
         onehot_outputs = torch.nn.functional.one_hot(indices.squeeze(2), num_classes=256)  # shape: (b, 7, 256)
         return onehot_outputs
-
+    
+    def sample(self):
+        noise = torch.rand(1, self.n_qubits, device=self.device) * torch.math.pi/2 
+        pred_onehot = self.forward(noise)[0]
+        pred_indices = torch.argmax(pred_onehot, dim=-1)
+        pred = []
+        for idx in pred_indices:
+            idx = idx.item()
+            if idx in self.bin_real_map:
+                pred.append(self.bin_real_map[idx])
+            else:
+                pred.append((self.edges[idx] + self.edges[idx+1]) / 2)
+        return torch.Tensor(pred).to(self.device)
 
 class QGAN:
     def __init__(self, n_generators, n_qubits, n_anscillatory, n_layers, input_shape, lr=0.01, batch_size=32, device="cuda"):
