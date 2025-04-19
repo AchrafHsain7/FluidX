@@ -8,7 +8,7 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
 from core.VQ_VAE import VQ_VAE, VQ_VAE_CNN
-from utils.utils import normalized_mse
+from utils.utils import normalized_mse, log_mse
 
 
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     MINI = True
 
     if MINI:
-        model = VQ_VAE(128, 24).cuda()
+        model = VQ_VAE(128, 7).cuda()
     else:
         model = VQ_VAE(128, 32).cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
@@ -76,7 +76,7 @@ if __name__ == "__main__":
             plt.subplot(2, 9, i+1)
             plt.imshow(OUTPUTS[k][0][j], cmap=cmr.iceburn, vmin=-0.02, vmax=0.02)
             plt.subplot(2, 9, (i+1)+9)
-            plt.imshow(OUTPUTS[k][1][j], cmap=cmr.iceburn)
+            plt.imshow(OUTPUTS[k][1][j], cmap=cmr.iceburn, vmin=-0.01, vmax=0.01)
 
         plt.tight_layout()
         plt.show()

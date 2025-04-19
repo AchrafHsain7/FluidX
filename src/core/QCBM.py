@@ -1,22 +1,15 @@
-import jax 
-import jax.numpy as jnp
-from functools import partial
-
-jax.config.update("jax_enable_x64", True)
-
-
-
 class QCBM:
-    def __init__(self, circuit, mmd, prior):
+    def __init__(self, circuit, mmd, prior, device="cuda"):
         self.circuit = circuit
         self.mmd = mmd
-        self.prior = prior
-
-    @partial(jax.jit, static_argnums=0)
-    def mmd_loss(self, params):
-        px = self.circuit(params)
-        print(px.shape)
-        return self.mmd(px, self.prior), px
-
+        self.prior = prior.to(device)
+        
+    def mmd_loss(self, params, bitstring):
+        # Get probabilities from quantum circuit - these automatically have gradients in PyTorch interface
+        px = self.circuit(params, bitstring)
+        
+        # Calculate MMD loss
+        loss = self.mmd(px, self.prior)
+        return loss, px
 
 

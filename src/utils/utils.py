@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import trimesh
 import json
 import jax.numpy as jnp
-
+from scipy.stats import norm
 
 
 ##############################################
@@ -176,6 +176,18 @@ def normalized_mse(x:torch.Tensor, y:torch.Tensor):
   y_norm = (y - y.mean()) / (y.std() + 1e-8)
   return torch.nn.functional.mse_loss(x_norm, y_norm)
 ###########################################################
+def smap(y_pred: torch.Tensor, y_true:torch.Tensor, epsilon=1e-8):
+    # symmetric mean absolute percentage error
+    numerator = torch.abs(y_pred - y_true)
+    denominator = (torch.abs(y_pred) + torch.abs(y_true)) / 2 + epsilon
+    return torch.mean(numerator / denominator)
+
+def log_mse(y_true, y_pred, epsilon=1e-8):
+    log_y_pred = torch.sign(y_pred) * torch.log(torch.abs(y_pred) + epsilon)
+    log_y_true = torch.sign(y_true) * torch.log(torch.abs(y_true) + epsilon)
+    
+    return torch.mean((log_y_pred - log_y_true) ** 2)
+###########################################################
 class MMD:
     def __init__(self, bandwiths, dataSpace):
         gammas = 1 / (2 * (bandwiths**2))
@@ -193,3 +205,37 @@ class MMD:
         return self.kernel_expval(pxy, pxy)
 
 ###############################################################
+def quantize_bin(data, min_val=None, max_val=None, nbins=255):
+    data = np.array(data)
+    if min_val==None or max_val == None:
+        min_val, max_val = min(data), max(data)
+    clipped_vals = np.clip(data, min_val, max_val)
+    bins = ((clipped_vals - min_val) / (max_val - clipped_vals) * nbins).astype(np.uint8)
+
+    return bins
+
+def dequantize_bin(quantized_data, max_val, min_val, nbins=255):
+    return (bins.astype(np.float32) / nbins) * (max_val - min_val) + min_val
+
+##########################################################################
+
+def gaussian_quantize(values, num_bins=256, mu=0.0, sigma=1.0, epsilon=1e-6):
+    values = np.asarray(values)
+    quantiles = np.linspace(epsilon, 1-epsilon, num_bins+1)
+    bin_edges = norm.ppf(quantiles, loc=mu, scale=sigma)
+    bins = np.digitize(values, bin_edges)
+    bins = np.clip(bins, 0, num_bins - 1)
+    return bins, bin_edges
+
+
+def gaussian_dequantize(bins, bin_edges):
+    midpoints = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    return midpoints[bins]
+
+###################################################################################
+def to_bitstring(num):
+  bitstring = f'{6:08b}'
+  bitstring = list(bitstring)
+  bitstring = [int(i) for i in bitstring]
+  return bitstring
+

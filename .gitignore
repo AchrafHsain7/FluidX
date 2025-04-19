@@ -2,3 +2,4 @@ src/scripts/*.npz
 data/superResolution/*.npz
 results/*.pt
 capstone/*
+*.pt
