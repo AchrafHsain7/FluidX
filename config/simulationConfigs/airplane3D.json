@@ -9,7 +9,7 @@
     "iterations": 5000,
     "plotsFreq": 25,
     "rightVelocity": 0.05,
-    "reynoldNumber": 300,
+    "reynoldNumber": 1000,
     "mask": "../../data/models/airplane.glb",
     "modelVolume": 0.5,
     "boundaryMode": "circular",

@@ -1,6 +1,6 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
-
+from sklearn.manifold import TSNE
 
 import sys
 import os
@@ -41,8 +41,12 @@ if __name__ == "__main__":
     plt.hist(original, bins=30)
     plt.show()
     bins = bins.reshape(shape)
-    print(bins)
     # from bins to bitsttrings for QCBM
+    tsne = TSNE(n_components=2, perplexity=20).fit_transform(codebook)
+    print(tsne.shape)
+    plt.scatter(tsne[:, 0], tsne[:, 1])
+    plt.show()
+
     
 
 

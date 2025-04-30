@@ -13,7 +13,7 @@ if __name__ == "__main__":
     DEVICE = "cuda"
     BATCH_SIZE = 32
     LR = 0.01
-    EPOCHS = 1
+    EPOCHS = 2
     # Loading data
     latent_space = np.load("../../results/codebook_mini.npz")
     codebook = latent_space["codebook"]

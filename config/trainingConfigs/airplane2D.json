@@ -14,6 +14,6 @@
     "boundaryMode": "circular",
     "leftOffset": -200,
     "upOffset": 0,
-    "plotNums": 2,
+    "plotNums": 3,
     "colorLims": [-0.02, 0.02]
 }

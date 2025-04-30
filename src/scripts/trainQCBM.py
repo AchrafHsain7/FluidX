@@ -5,12 +5,17 @@ import time
 from functools import partial
 import sys
 import os
+
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
 from core.MMD import MMD
 from core.QCBM import QCBM
 from core.QCBMTrainer import QCBMTrainer
 
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt 
 
 if __name__ == "__main__":
     # Create a results directory
@@ -44,6 +49,11 @@ if __name__ == "__main__":
             qml.StronglyEntanglingLayers(weights=weights, wires=range(n_qubits))
             return qml.probs()
         
+        print("DRAWING CIRCUIT")
+        qml.draw_mpl(circuit, level="device",max_length=7)(weights, None)
+        plt.show()
+        sys.exit()
+
         bandwidths = torch.tensor([0.25, 0.5, 1.0], device=device)
         space = torch.arange(256, device=device)
         mmd = MMD(bandwidths, space)

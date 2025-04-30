@@ -179,17 +179,17 @@ class QGAN:
                 print(f'Iteration: {epoch}, Discriminator Loss: {loss_discriminator:0.3f}, Generator Loss: {lossG_fake:0.3f}')
 
         
-        plt.subplots(1, 2, 1)
+        plt.subplot(1, 2, 1)
         plt.plot(self.history["discriminator_loss"])
         plt.title("Discriminator Loss")
-        plt.subplots(1, 2, 2)
+        plt.subplot(1, 2, 2)
         plt.plot(self.history["generator_loss"])
         plt.title("Generator Loss")
+        plt.savefig("../../results/QGAN/losses.png")
         plt.show()
         if input("Save model? ") == "y":
             torch.save(self.discriminator, "../../results/QGAN/discriminator.pt")
             torch.save(self.generator.state_dict(), "../../results/QGAN/generator.pt")
-            plt.savefig("../../results/QGAN/losses.png")
     def sample(self, size):
         noise = torch.rand(size, self.n_qubits, device=self.device) * math.pi/2
         fake_data = self.generator(noise)

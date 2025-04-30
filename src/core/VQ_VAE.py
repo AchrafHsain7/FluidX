@@ -30,18 +30,6 @@ class VQ_VAE(nn.Module):
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, codebook_dim),
-            #nn.BatchNorm1d(512),
-            #nn.ReLU(),
-            #nn.Linear(512, 256),
-            #nn.BatchNorm1d(256),
-            #nn.ReLU(),
-            #nn.Linear(256, 128),
-            #nn.BatchNorm1d(128),
-            #nn.ReLU(),
-            #nn.Linear(128, 64),
-            #nn.BatchNorm1d(64),
-            #nn.ReLU(),
-            #nn.Linear(64, codebook_dim)
         )
         self.embeddings = nn.Embedding(codebook_num, codebook_dim)
         self.beta = 0.2
@@ -50,18 +38,6 @@ class VQ_VAE(nn.Module):
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, 256*4*16),
-            #nn.BatchNorm1d(128),
-            #nn.ReLU(),
-            #nn.Linear(128, 256),
-            #nn.BatchNorm1d(256),
-            #nn.ReLU(),
-            #nn.Linear(256, 512),
-            #nn.BatchNorm1d(512),
-            #nn.ReLU(),
-            #nn.Linear(512, 2048),
-            #nn.ReLU(),
-            #nn.BatchNorm1d(2048),# similar to tanh but smoother for output
-            #nn.Linear(2048, 256*4*16)
         )
 
         self.image_decoder = nn.Sequential(
