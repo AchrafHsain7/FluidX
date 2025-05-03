@@ -115,8 +115,8 @@ if __name__ == "__main__":
     plt.title("PCA Visualization of Model Samples")
     plt.xlabel("PCA Component 1")
     plt.ylabel("PCA Component 2")
-    plt.savefig(f"../../results/FINAL/pca_{SAMPLE_SIZE}.png")
     plt.legend()
+    plt.savefig(f"../../results/FINAL/pca_{SAMPLE_SIZE}.png")
     plt.show()
 
 
